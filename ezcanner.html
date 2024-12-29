@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner</title>
+</head>
+<body>
+    <h1>QR Code Scanner</h1>
+
+        <!--display the web cam-->
+    <video id="preview" width="400" height="300" autoplay></video>
+
+        <!--it will show the decoded code-->
+    <p>QR Code Data: <span id="qr-result"></span></p>
+
+        <!--QR is scanning JavaScript library-->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+    <script>
+                 //Accessing webcam
+        const video = document.getElementById('preview');
+        const qrResult = document.getElementById('qr-result');
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream) {
+            video.srcObject = stream;
+        });
+
+                //Function to capture video frames and decode QR
+        function scanQRCode() {
+            const canvasElement = document.createElement('canvas');
+            const canvas = canvasElement.getContext('2d');
+
+                 // Set canvas size equal to video size
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+
+                 // Draw the video frame on canvas
+            canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+
+                    // Get the image data from canvas
+            const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+
+                    // Use jsQR to decode QR from imageData
+            const qrCode = jsQR(imageData.data, canvasElement.width, canvasElement.height);
+
+            if (qrCode) {
+                qrResult.textContent = qrCode.data; // Display the decoded QR code
+                console.log("QR Code detected:", qrCode.data);
+                sendQRCodeDataToServer(qrCode.data); // Send QR data to server
+            } else {
+                qrResult.textContent = "Scanning for QR code...";
+            }
+
+            requestAnimationFrame(scanQRCode); // Keep scanning
+        }
+
+                // Send QR code data to the server
+        function sendQRCodeDataToServer(data) {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "process_qr.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    console.log('Server Response: ' + xhr.responseText);
+                }
+            };
+            xhr.send("qr_data=" + encodeURIComponent(data));
+        }
+
+                // Start scanning
+        video.addEventListener('play', scanQRCode);
+    </script>
+</body>
+</html>
